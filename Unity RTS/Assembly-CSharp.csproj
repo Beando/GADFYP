@@ -67,6 +67,7 @@
     <Compile Include="Assets\Scripts\NodeManager.cs" />
     <Compile Include="Assets\Scripts\ObjectInfo.cs" />
     <Compile Include="Assets\Scripts\ResourceManager.cs" />
+    <Compile Include="Assets\Scripts\TaskList.cs" />
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>D:/GitHub/GADFYP/Unity RTS/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
     </Reference>

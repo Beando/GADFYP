@@ -5,8 +5,12 @@ using UnityEngine.AI;
 
 public class ObjectInfo : MonoBehaviour
 {
-    
+    public TaskList task;
+    public ResourceManager RM;
+    GameObject targetNode;
+
     public NodeManager.ResourceTypes heldResourceType;
+
 
     public bool isSelected = false;
     public bool isGathering = false;
@@ -15,6 +19,8 @@ public class ObjectInfo : MonoBehaviour
 
     public int heldResource;
     public int maxHeldResource;
+
+    public GameObject[] drops;
 
     private NavMeshAgent agent;
 
@@ -28,14 +34,57 @@ public class ObjectInfo : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if(targetNode == null)
+        {
+            if (heldResource != 0)
+            {
+                drops = GameObject.FindGameObjectsWithTag("Drops");
+                agent.destination = GetClosestDropOff(drops).transform.position;
+                drops = null;
+                task = TaskList.Delivering;
+            }
+            else
+            {
+                task = TaskList.Idle;
+            }
+        }
+
         if(heldResource >= maxHeldResource)
         {
             //Return to drop off point
+            isGathering = false;
+            drops = GameObject.FindGameObjectsWithTag("Drops");
+            agent.destination = GetClosestDropOff(drops).transform.position;
+            drops = null;
+            task = TaskList.Delivering;
+
         }
         if (Input.GetMouseButtonDown(1) && isSelected)
         {
             RightClick();
         }
+
+    }
+
+    GameObject GetClosestDropOff(GameObject[] dropOffs)
+    {
+        GameObject closestDrop = null;
+        float closestDistance = Mathf.Infinity;
+        Vector3 position = transform.position;
+
+        foreach(GameObject targetDrop in dropOffs)
+        {
+            Vector3 direction = targetDrop.transform.position - position;
+            float distance = direction.sqrMagnitude;
+            if(distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestDrop = targetDrop;
+            }
+        }
+
+        return closestDrop;
+        
     }
 
     public void RightClick()
@@ -49,10 +98,14 @@ public class ObjectInfo : MonoBehaviour
             {
                 agent.destination = hit.point;
                 Debug.Log("Moving");
-            }else if(hit.collider.tag == "Resource")
+                task = TaskList.Moving;
+            }
+            else if(hit.collider.tag == "Resource")
             {
                 agent.destination = hit.collider.gameObject.transform.position;
                 Debug.Log("Harvesting");
+                task = TaskList.Gathering;
+                targetNode = hit.collider.gameObject;
             }
         }
     }
@@ -61,11 +114,25 @@ public class ObjectInfo : MonoBehaviour
     {
         GameObject hitObject = other.gameObject;
 
-        if(hitObject.tag == "Resource")
+        if(hitObject.tag == "Resource" && task== TaskList.Gathering)
         {
             isGathering = true;
             hitObject.GetComponent<NodeManager>().gatherers++;
             heldResourceType = hitObject.GetComponent<NodeManager>().resourceType;
+            
+        }else if(hitObject.tag == "Drops" && task == TaskList.Delivering)
+        {
+            if(RM.stone >= RM.maxStone)
+            {
+                task = TaskList.Idle;
+            }
+            else
+            {
+                RM.stone += heldResource;
+                heldResource = 0;
+                task = TaskList.Gathering;
+                agent.destination = targetNode.transform.position;
+            }
         }
     }
     public void OnTriggerExit(Collider other)
@@ -74,7 +141,9 @@ public class ObjectInfo : MonoBehaviour
         
         if(hitObject.tag == "Resource")
         {
+            isGathering = false;
             hitObject.GetComponent<NodeManager>().gatherers--;
+            
 
         }
     }
